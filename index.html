@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>אפקטיביות חקיקה — כנסת 25</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f7f8fa;
+    color: #1a1a2e;
+    direction: rtl;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: white;
+    padding: 40px 5%;
+  }
+
+  header h1 { font-size: 2rem; margin-bottom: 10px; }
+  header p { color: #aab; font-size: 1rem; max-width: 700px; line-height: 1.6; }
+
+  .les-box {
+    background: #16213e;
+    border-right: 4px solid #e94560;
+    padding: 16px 20px;
+    margin-top: 20px;
+    border-radius: 4px;
+    max-width: 620px;
+  }
+  .les-box p { color: #ccd; font-size: 0.9rem; line-height: 1.7; }
+
+  .stats-bar {
+    display: flex;
+    gap: 20px;
+    padding: 24px 5%;
+    background: white;
+    border-bottom: 1px solid #e8e8e8;
+    flex-wrap: wrap;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+  }
+  .stat .num { font-size: 2rem; font-weight: 700; color: #e94560; }
+  .stat .label { font-size: 0.8rem; color: #666; margin-top: 2px; }
+
+  section {
+    padding: 40px 5%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    color: #1a1a2e;
+    border-bottom: 2px solid #e94560;
+    padding-bottom: 8px;
+    display: inline-block;
+  }
+
+  /* FILTERS */
+  .filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filters select, .filters input {
+    padding: 8px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: white;
+    direction: rtl;
+  }
+  .filters input { min-width: 220px; }
+
+  /* BUBBLE CHART */
+  .chart-wrap {
+    background: white;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    margin-bottom: 40px;
+  }
+  .chart-wrap canvas { max-height: 480px; }
+
+  /* TABLE */
+  .table-wrap {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    overflow-x: auto;
+    margin-bottom: 40px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.93rem;
+  }
+  thead { background: #1a1a2e; color: white; }
+  th {
+    padding: 12px 16px;
+    text-align: right;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { background: #16213e; }
+  th.sorted-asc::after { content: ' ▲'; font-size: 0.7rem; }
+  th.sorted-desc::after { content: ' ▼'; font-size: 0.7rem; }
+  td { padding: 11px 16px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover { background: #fdf0f2; cursor: pointer; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge-f { background: #fde8ec; color: #c0392b; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+  .badge-m { background: #eaf0fb; color: #2471a3; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+
+  .les-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .les-bar { height: 8px; background: #e94560; border-radius: 4px; min-width: 2px; }
+  .les-num { font-weight: 700; min-width: 36px; }
+
+  /* MK CARD MODAL */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 14px;
+    padding: 36px;
+    max-width: 480px;
+    width: 90%;
+    position: relative;
+    direction: rtl;
+  }
+  .modal-close {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: #888;
+  }
+  .modal h3 { font-size: 1.5rem; margin-bottom: 4px; }
+  .modal .en-name { color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+  .modal .faction-tag {
+    display: inline-block;
+    background: #1a1a2e;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  .modal-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .modal-stat {
+    background: #f7f8fa;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .modal-stat .mnum { font-size: 1.8rem; font-weight: 700; color: #e94560; }
+  .modal-stat .mlabel { font-size: 0.78rem; color: #666; margin-top: 2px; }
+  .modal-compare { font-size: 0.85rem; color: #555; line-height: 1.7; background: #f7f8fa; padding: 12px 16px; border-radius: 8px; }
+  .modal-compare span { font-weight: 700; color: #1a1a2e; }
+
+  .pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 16px;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #555;
+  }
+  .pagination button {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .pagination button:disabled { opacity: 0.4; cursor: default; }
+  .pagination button.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+
+  footer {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+    font-size: 0.82rem;
+    border-top: 1px solid #e8e8e8;
+    background: white;
+  }
+
+  /* COMPARE */
+  .compare-btn {
+    padding: 3px 10px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: inherit;
+    color: #555;
+    transition: all 0.15s;
+  }
+  .compare-btn.selected {
+    background: #1a1a2e;
+    color: white;
+    border-color: #1a1a2e;
+  }
+  .compare-panel {
+    display: none;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    padding: 28px;
+    margin-bottom: 40px;
+    border-top: 3px solid #e94560;
+  }
+  .compare-panel.open { display: block; }
+  .compare-panel h3 { font-size: 1.1rem; margin-bottom: 20px; color: #1a1a2e; }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .compare-mk { text-align: center; }
+  .compare-mk .cmk-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+  .compare-mk .cmk-faction { color: #888; font-size: 0.85rem; margin-bottom: 16px; }
+  .compare-mk .cmk-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+  }
+  .compare-mk .cmk-row .val { font-weight: 700; color: #e94560; }
+  .compare-mk .cmk-row .val.better { color: #16a34a; }
+  .compare-vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ccc;
+    padding-top: 50px;
+  }
+  .compare-hint {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.85rem;
+    padding: 16px;
+    border: 2px dashed #e8e8e8;
+    border-radius: 8px;
+    margin-bottom: 40px;
+  }
+
+  /* SHARE */
+  .share-bar {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 12px 5%;
+    background: white;
+    border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
+  }
+  .share-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: white;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    color: #444;
+    transition: background 0.15s;
+  }
+  .share-btn:hover { background: #f5f5f5; }
+  .share-btn.copied { background: #e8f5e9; border-color: #16a34a; color: #16a34a; }
+  .share-img-btn {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: white;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    color: #444;
+  }
+  .share-img-btn:hover { background: #f5f5f5; }
+
+  /* SUCCESS RATE */
+  .rate-bar-wrap { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; }
+  .rate-bar { height: 6px; background: #16a34a; border-radius: 3px; min-width: 2px; }
+
+  /* HEATMAP */
+  .heatmap-table { border-collapse: collapse; font-size: 0.75rem; min-width: 700px; }
+  .heatmap-table th { padding: 6px 10px; text-align: right; white-space: nowrap; color: #555; font-weight: 600; }
+  .heatmap-table td.mk-name { padding: 3px 10px; white-space: nowrap; color: #333; font-size: 0.78rem; text-align: right; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .heatmap-table td.hm-cell { width: 60px; height: 26px; text-align: center; font-size: 0.72rem; font-weight: 600; color: white; border: 1px solid white; cursor: default; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>מי עובד בכנסת?</h1>
+  <p>בדקנו כמה הצעות חוק הגיש כל ח"כ בכנסת ה-25 וכמה מהן באמת עברו לחוק.</p>
+  <div class="les-box">
+    <p>
+      <strong>איך מחשבים את הציון?</strong> הצעת חוק שרק הוגשה שווה נקודה אחת. הצעה שעברה לחוק שווה פי 5. הציון מחבר את כל ההצעות של כל ח"כ לפי מידת התקדמותן.
+    </p>
+  </div>
+</header>
+
+<div class="share-bar">
+  <button class="share-btn" onclick="shareLink(this)">🔗 העתק קישור</button>
+  <button class="share-img-btn" onclick="shareChart('bubbleChart', 'גרף בועות')">📷 שמור גרף בועות</button>
+  <button class="share-img-btn" onclick="shareChart('factionChart', 'גרף סיעות')">📷 שמור גרף סיעות</button>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<section>
+  <h2>חיפוש וסינון</h2>
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="חיפוש לפי שם...">
+    <select id="factionFilter"><option value="">כל הסיעות</option></select>
+    <select id="genderFilter">
+      <option value="">כל המגדרים</option>
+      <option value="Female">נשים</option>
+      <option value="Male">גברים</option>
+    </select>
+    <select id="sortSelect">
+      <option value="les-desc">LES: מהגבוה לנמוך</option>
+      <option value="les-asc">LES: מהנמוך לגבוה</option>
+      <option value="bills-desc">הצעות חוק: מהרב למעט</option>
+      <option value="rate-desc">% הצלחה: מהגבוה לנמוך</option>
+      <option value="name-asc">שם: א-ת</option>
+    </select>
+    <span id="resultCount" style="color:#888; font-size:0.88rem;"></span>
+  </div>
+
+  <div class="compare-hint" id="compareHint">בחר שני חברי כנסת מהטבלה להשוואה ←</div>
+  <div class="compare-panel" id="comparePanel">
+    <h3>השוואה בין חברי כנסת</h3>
+    <div class="compare-grid">
+      <div class="compare-mk" id="cMk1"></div>
+      <div class="compare-vs">מול</div>
+      <div class="compare-mk" id="cMk2"></div>
+    </div>
+    <div style="text-align:center; margin-top:16px;">
+      <button onclick="clearCompare()" style="padding:6px 18px; border:1px solid #ddd; border-radius:6px; background:white; cursor:pointer; font-family:inherit; color:#888;">נקה השוואה</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>שם</th>
+          <th>סיעה</th>
+          <th>מגדר</th>
+          <th>LES</th>
+          <th>הצעות שהוגשו</th>
+          <th>הצעות שעברו</th>
+          <th>% הצלחה</th>
+          <th>השווה</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <h2>הצעות חוק שהוגשו מול ציון LES</h2>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">כל בועה היא ח"כ. גודל הבועה = LES. ציר X = הצעות חוק שהוגשו. ציר Y = הצעות חוק שעברו.</p>
+  <div class="chart-wrap">
+    <canvas id="bubbleChart"></canvas>
+  </div>
+
+  <h2>השוואת מגדר</h2>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">חציון LES, הצעות שהוגשו ואחוז הצלחה בחלוקה לנשים וגברים.</p>
+  <div class="chart-wrap">
+    <canvas id="genderChart" style="max-height:300px;"></canvas>
+  </div>
+
+  <h2>מפת חום: שלבי חקיקה לפי ח"כ</h2>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">כל שורה היא ח"כ (מסודר לפי LES). כל עמודה היא שלב בחקיקה. הצבע מראה כמה הצעות הגיעו לאותו שלב.</p>
+  <div class="chart-wrap" style="overflow-x:auto; padding:16px 8px;">
+    <div id="heatmapWrap"></div>
+  </div>
+
+  <h2>חציון LES לפי סיעה</h2>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">לחיצה על סיעה מסננת את הטבלה למטה. חציון עדיף על ממוצע כי הנתונים מוטים — ח"כים עם LES=0 מורידים את הממוצע.</p>
+  <div class="chart-wrap">
+    <canvas id="factionChart" style="max-height:340px;"></canvas>
+  </div>
+</section>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3 id="mName"></h3>
+    <div class="en-name" id="mNameEn"></div>
+    <div class="faction-tag" id="mFaction"></div>
+    <div class="modal-stats">
+      <div class="modal-stat"><div class="mnum" id="mLes"></div><div class="mlabel">ציון LES</div></div>
+      <div class="modal-stat"><div class="mnum" id="mPassed"></div><div class="mlabel">הצעות שעברו</div></div>
+      <div class="modal-stat"><div class="mnum" id="mSubmitted"></div><div class="mlabel">הצעות שהוגשו</div></div>
+      <div class="modal-stat"><div class="mnum" id="mRank"></div><div class="mlabel">דירוג (מתוך 148)</div></div>
+    </div>
+    <div class="modal-compare" id="mCompare"></div>
+  </div>
+</div>
+
+<!-- <footer>
+  נתונים: API רשמי של הכנסת &nbsp;|&nbsp; עיבוד: Shiri Kadishson Yanay, Tel Aviv University &nbsp;|&nbsp; נכון ל-29.6.2026
+</footer> -->
+
+<script>
+
+let allData = [];
+let filtered = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let compareSet = [];
+let factionChartInstance = null;
+
+const FACTION_COLORS = {
+  'הליכוד': '#1E3A8A',
+  'יש עתיד': '#0EA5E9',
+  'ש"ס': '#7C3AED',
+  'הציונות הדתית': '#16A34A',
+  'עוצמה יהודית': '#15803D',
+  'המחנה הממלכתי': '#2563EB',
+  'הימין הממלכתי': '#3B82F6',
+  'יהדות התורה': '#6D28D9',
+  'ישראל ביתנו': '#0284C7',
+  'העבודה': '#DC2626',
+  'חד"ש-תע"ל': '#B45309',
+  'רע"ם': '#059669',
+  'נעם': '#9CA3AF',
+  'עצמאי': '#6B7280',
+};
+
+async function init() {
+  allData = [{"name_he":"יבגני סובה","name_en":"Evgeny Sova","gender":"Male","gender_he":"גבר","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":433,"bills_submitted":388,"bills_passed":25,"s0":87,"s1":257,"s2":12,"s3":1,"s4":6,"s5":25},{"name_he":"אחמד טיבי","name_en":"Ahmad Tibi","gender":"Male","gender_he":"גבר","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":428,"bills_submitted":391,"bills_passed":12,"s0":32,"s1":335,"s2":7,"s3":1,"s4":4,"s5":12},{"name_he":"שרון ניר","name_en":"Sharon Nir","gender":"Female","gender_he":"אישה","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":427,"bills_submitted":396,"bills_passed":23,"s0":96,"s1":254,"s2":16,"s3":2,"s4":5,"s5":23},{"name_he":"ינון אזולאי","name_en":"Yinon Azulai","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":423,"bills_submitted":267,"bills_passed":31,"s0":14,"s1":194,"s2":18,"s3":2,"s4":8,"s5":31},{"name_he":"יצחק קרויזר","name_en":"Yitzhak Kroizer","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":419,"bills_submitted":291,"bills_passed":27,"s0":31,"s1":192,"s2":34,"s3":4,"s4":3,"s5":27},{"name_he":"יעקב אשר","name_en":"Yaakov Asher","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":418,"bills_submitted":290,"bills_passed":26,"s0":5,"s1":237,"s2":18,"s3":1,"s4":3,"s5":26},{"name_he":"יוליה מלינובסקי","name_en":"Yulia Malinovsky","gender":"Female","gender_he":"אישה","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":417,"bills_submitted":377,"bills_passed":25,"s0":87,"s1":247,"s2":13,"s3":1,"s4":4,"s5":25},{"name_he":"ואליד אלהואשלה","name_en":"Walid Alhawashla","gender":"Male","gender_he":"גבר","faction_he":"רע\"ם","faction_en":"Raam","les":412,"bills_submitted":399,"bills_passed":7,"s0":29,"s1":354,"s2":6,"s3":1,"s4":2,"s5":7},{"name_he":"עודד פורר","name_en":"Oded Forer","gender":"Male","gender_he":"גבר","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":409,"bills_submitted":355,"bills_passed":25,"s0":84,"s1":222,"s2":16,"s3":2,"s4":6,"s5":25},{"name_he":"משה גפני","name_en":"Moshe Gafni","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":394,"bills_submitted":279,"bills_passed":24,"s0":4,"s1":233,"s2":15,"s3":1,"s4":2,"s5":24},{"name_he":"דן אילוז","name_en":"Dan Illouz","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":371,"bills_submitted":266,"bills_passed":17,"s0":17,"s1":193,"s2":31,"s3":1,"s4":7,"s5":17},{"name_he":"נעמה לזימי","name_en":"Naama Lazimi","gender":"Female","gender_he":"אישה","faction_he":"העבודה","faction_en":"Labor","les":356,"bills_submitted":329,"bills_passed":17,"s0":56,"s1":248,"s2":4,"s3":1,"s4":3,"s5":17},{"name_he":"מירב בן ארי","name_en":"Merav Ben-Ari","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":353,"bills_submitted":281,"bills_passed":23,"s0":41,"s1":200,"s2":14,"s3":2,"s4":1,"s5":23},{"name_he":"יונתן מישרקי","name_en":"Yonatan Mishraki","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":342,"bills_submitted":219,"bills_passed":25,"s0":11,"s1":159,"s2":18,"s3":2,"s4":4,"s5":25},{"name_he":"חמד עמאר","name_en":"Hamad Amar","gender":"Male","gender_he":"גבר","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":340,"bills_submitted":307,"bills_passed":20,"s0":77,"s1":191,"s2":13,"s3":1,"s4":5,"s5":20},{"name_he":"לימור סון הר מלך","name_en":"Limor Son Har-Melech","gender":"Female","gender_he":"אישה","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":337,"bills_submitted":219,"bills_passed":25,"s0":21,"s1":145,"s2":20,"s3":5,"s4":3,"s5":25},{"name_he":"חוה אתי עטייה","name_en":"Hava Etti Atia","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":335,"bills_submitted":260,"bills_passed":13,"s0":17,"s1":206,"s2":15,"s3":2,"s4":7,"s5":13},{"name_he":"צביקה פוגל","name_en":"Tzvika Fogel","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":332,"bills_submitted":208,"bills_passed":23,"s0":14,"s1":133,"s2":33,"s3":2,"s4":3,"s5":23},{"name_he":"אימאן ח'טיב יאסין","name_en":"Iman Khatib-Yasin","gender":"Female","gender_he":"אישה","faction_he":"רע\"ם","faction_en":"Raam","les":330,"bills_submitted":320,"bills_passed":8,"s0":40,"s1":261,"s2":7,"s3":1,"s4":3,"s5":8},{"name_he":"מיכאל מרדכי ביטון","name_en":"Michael Biton","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":328,"bills_submitted":275,"bills_passed":19,"s0":48,"s1":190,"s2":13,"s3":3,"s4":2,"s5":19},{"name_he":"ניסים ואטורי","name_en":"Nissim Vaturi","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":326,"bills_submitted":206,"bills_passed":24,"s0":20,"s1":129,"s2":27,"s3":1,"s4":5,"s5":24},{"name_he":"אופיר כץ","name_en":"Ofir Katz","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":317,"bills_submitted":158,"bills_passed":34,"s0":11,"s1":90,"s2":17,"s3":1,"s4":5,"s5":34},{"name_he":"אביגדור ליברמן","name_en":"Avigdor Lieberman","gender":"Male","gender_he":"גבר","faction_he":"ישראל ביתנו","faction_en":"Yisrael Beiteinu","les":316,"bills_submitted":299,"bills_passed":17,"s0":78,"s1":188,"s2":10,"s3":1,"s4":5,"s5":17},{"name_he":"רון כץ","name_en":"Ron Katz","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":297,"bills_submitted":274,"bills_passed":17,"s0":53,"s1":196,"s2":8,"s3":0,"s4":0,"s5":17},{"name_he":"אלי דלל","name_en":"Eli Dalal","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":295,"bills_submitted":181,"bills_passed":24,"s0":22,"s1":109,"s2":17,"s3":4,"s4":5,"s5":24},{"name_he":"יוסף טייב","name_en":"Yosef Tayeb","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":294,"bills_submitted":190,"bills_passed":22,"s0":14,"s1":135,"s2":13,"s3":1,"s4":5,"s5":22},{"name_he":"חנוך דב מלביצקי","name_en":"Hanoch Dov Malbitzky","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":278,"bills_submitted":176,"bills_passed":19,"s0":7,"s1":127,"s2":18,"s3":0,"s4":5,"s5":19},{"name_he":"קטי קטרין שטרית","name_en":"Keti Sheetrit","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":274,"bills_submitted":199,"bills_passed":17,"s0":21,"s1":142,"s2":14,"s3":1,"s4":4,"s5":17},{"name_he":"מרב מיכאלי","name_en":"Merav Michaeli","gender":"Female","gender_he":"אישה","faction_he":"העבודה","faction_en":"Labor","les":270,"bills_submitted":274,"bills_passed":5,"s0":30,"s1":235,"s2":3,"s3":0,"s4":1,"s5":5},{"name_he":"עאידה תומא סלימאן","name_en":"Aida Touma-Sliman","gender":"Female","gender_he":"אישה","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":269,"bills_submitted":271,"bills_passed":4,"s0":25,"s1":238,"s2":2,"s3":1,"s4":1,"s5":4},{"name_he":"אוהד טל","name_en":"Ohad Tal","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":264,"bills_submitted":174,"bills_passed":15,"s0":17,"s1":104,"s2":33,"s3":1,"s4":4,"s5":15},{"name_he":"משה פסל","name_en":"Moshe Passal","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":264,"bills_submitted":173,"bills_passed":16,"s0":14,"s1":108,"s2":32,"s3":0,"s4":3,"s5":16},{"name_he":"שמחה רוטמן","name_en":"Simcha Rothman","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":252,"bills_submitted":139,"bills_passed":21,"s0":9,"s1":81,"s2":22,"s3":2,"s4":4,"s5":21},{"name_he":"אריאל קלנר","name_en":"Ariel Kellner","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":250,"bills_submitted":145,"bills_passed":19,"s0":9,"s1":89,"s2":22,"s3":2,"s4":4,"s5":19},{"name_he":"משה סולומון","name_en":"Moshe Solomon","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":244,"bills_submitted":156,"bills_passed":15,"s0":11,"s1":97,"s2":29,"s3":2,"s4":2,"s5":15},{"name_he":"מנסור עבאס","name_en":"Mansour Abbas","gender":"Male","gender_he":"גבר","faction_he":"רע\"ם","faction_en":"Raam","les":233,"bills_submitted":219,"bills_passed":7,"s0":27,"s1":178,"s2":4,"s3":0,"s4":3,"s5":7},{"name_he":"ווליד טאהא","name_en":"Waleed Taha","gender":"Male","gender_he":"גבר","faction_he":"רע\"ם","faction_en":"Raam","les":225,"bills_submitted":220,"bills_passed":5,"s0":28,"s1":180,"s2":4,"s3":0,"s4":3,"s5":5},{"name_he":"מיכל מרים וולדיגר","name_en":"Michal Waldiger","gender":"Female","gender_he":"אישה","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":224,"bills_submitted":149,"bills_passed":14,"s0":15,"s1":92,"s2":24,"s3":2,"s4":2,"s5":14},{"name_he":"משה סעדה","name_en":"Moshe Saada","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":224,"bills_submitted":129,"bills_passed":15,"s0":11,"s1":68,"s2":29,"s3":1,"s4":5,"s5":15},{"name_he":"אליהו רביבו","name_en":"Eliyahu Revivo","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":223,"bills_submitted":155,"bills_passed":12,"s0":16,"s1":105,"s2":14,"s3":2,"s4":6,"s5":12},{"name_he":"פנינה תמנו","name_en":"Pnina Tamano-Shata","gender":"Female","gender_he":"אישה","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":221,"bills_submitted":157,"bills_passed":18,"s0":34,"s1":86,"s2":15,"s3":1,"s4":3,"s5":18},{"name_he":"אלון שוסטר","name_en":"Alon Schuster","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":215,"bills_submitted":194,"bills_passed":12,"s0":41,"s1":130,"s2":9,"s3":1,"s4":1,"s5":12},{"name_he":"יסמין פרידמן","name_en":"Yasmin Fridman","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":215,"bills_submitted":213,"bills_passed":10,"s0":51,"s1":144,"s2":5,"s3":1,"s4":2,"s5":10},{"name_he":"מישל בוסקילה","name_en":"Michel Buskila","gender":"Male","gender_he":"גבר","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":214,"bills_submitted":187,"bills_passed":3,"s0":6,"s1":162,"s2":13,"s3":1,"s4":2,"s5":3},{"name_he":"עופר כסיף","name_en":"Ofer Cassif","gender":"Male","gender_he":"גבר","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":207,"bills_submitted":216,"bills_passed":1,"s0":24,"s1":185,"s2":3,"s3":1,"s4":2,"s5":1},{"name_he":"שלום דנינו","name_en":"Shalom Danino","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":205,"bills_submitted":132,"bills_passed":14,"s0":12,"s1":88,"s2":11,"s3":3,"s4":4,"s5":14},{"name_he":"איימן עודה","name_en":"Ayman Odeh","gender":"Male","gender_he":"גבר","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":204,"bills_submitted":212,"bills_passed":1,"s0":17,"s1":191,"s2":2,"s3":0,"s4":1,"s5":1},{"name_he":"אושר שקלים","name_en":"Osher Shekalim","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":202,"bills_submitted":122,"bills_passed":15,"s0":7,"s1":81,"s2":14,"s3":2,"s4":3,"s5":15},{"name_he":"מטי צרפתי הרכבי","name_en":"Matti Tsarfati-Harkavi","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":197,"bills_submitted":201,"bills_passed":8,"s0":45,"s1":141,"s2":5,"s3":2,"s4":0,"s5":8},{"name_he":"גלעד קריב","name_en":"Gilad Kariv","gender":"Male","gender_he":"גבר","faction_he":"העבודה","faction_en":"Labor","les":192,"bills_submitted":199,"bills_passed":9,"s0":49,"s1":137,"s2":3,"s3":0,"s4":1,"s5":9},{"name_he":"נאור שירי","name_en":"Naor Shiri","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":188,"bills_submitted":181,"bills_passed":9,"s0":46,"s1":117,"s2":4,"s3":2,"s4":3,"s5":9},{"name_he":"טלי גוטליב","name_en":"Tali Gottlieb","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":188,"bills_submitted":112,"bills_passed":14,"s0":7,"s1":73,"s2":13,"s3":1,"s4":4,"s5":14},{"name_he":"אביחי אברהם בוארון","name_en":"Avichai Buaron","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":184,"bills_submitted":145,"bills_passed":7,"s0":16,"s1":102,"s2":16,"s3":1,"s4":3,"s5":7},{"name_he":"סימון דוידסון","name_en":"Simon Davidson","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":175,"bills_submitted":169,"bills_passed":10,"s0":46,"s1":106,"s2":3,"s3":3,"s4":1,"s5":10},{"name_he":"ששון ששי גואטה","name_en":"Sasson Guetta","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":175,"bills_submitted":105,"bills_passed":14,"s0":10,"s1":67,"s2":8,"s3":2,"s4":4,"s5":14},{"name_he":"בועז ביסמוט","name_en":"Boaz Bismuth","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":174,"bills_submitted":100,"bills_passed":16,"s0":11,"s1":59,"s2":10,"s3":1,"s4":3,"s5":16},{"name_he":"עמית הלוי","name_en":"Amit Halevi","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":164,"bills_submitted":100,"bills_passed":12,"s0":8,"s1":63,"s2":13,"s3":1,"s4":3,"s5":12},{"name_he":"יוראי להב הרצנו","name_en":"Yorai Lahav Hertzano","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":164,"bills_submitted":174,"bills_passed":6,"s0":44,"s1":119,"s2":2,"s3":1,"s4":2,"s5":6},{"name_he":"צגה מלקו","name_en":"Tsega Melaku","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":163,"bills_submitted":99,"bills_passed":12,"s0":11,"s1":60,"s2":9,"s3":3,"s4":4,"s5":12},{"name_he":"טטיאנה מזרסקי","name_en":"Tatiana Mazarsky","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":162,"bills_submitted":165,"bills_passed":7,"s0":43,"s1":109,"s2":2,"s3":2,"s4":2,"s5":7},{"name_he":"ולדימיר בליאק","name_en":"Vladimir Beliak","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":159,"bills_submitted":165,"bills_passed":7,"s0":48,"s1":103,"s2":3,"s3":1,"s4":3,"s5":7},{"name_he":"מירב כהן","name_en":"Merav Cohen","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":158,"bills_submitted":150,"bills_passed":11,"s0":41,"s1":95,"s2":1,"s3":2,"s4":0,"s5":11},{"name_he":"משה טור פז","name_en":"Moshe Tur-Paz","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":157,"bills_submitted":171,"bills_passed":6,"s0":59,"s1":86,"s2":19,"s3":1,"s4":0,"s5":6},{"name_he":"דבי ביטון","name_en":"Debbie Biton","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":151,"bills_submitted":157,"bills_passed":8,"s0":44,"s1":100,"s2":4,"s3":1,"s4":0,"s5":8},{"name_he":"יאסר חוג'יראת","name_en":"Yasser Hujirat","gender":"Male","gender_he":"גבר","faction_he":"רע\"ם","faction_en":"Raam","les":149,"bills_submitted":152,"bills_passed":1,"s0":20,"s1":122,"s2":7,"s3":0,"s4":2,"s5":1},{"name_he":"מאיר כהן","name_en":"Meir Cohen","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":146,"bills_submitted":139,"bills_passed":9,"s0":43,"s1":78,"s2":6,"s3":1,"s4":2,"s5":9},{"name_he":"שלי טל מירון","name_en":"Shelly Tal-Miron","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":143,"bills_submitted":141,"bills_passed":7,"s0":32,"s1":98,"s2":2,"s3":2,"s4":0,"s5":7},{"name_he":"דוד ביטן","name_en":"David Bitan","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":142,"bills_submitted":82,"bills_passed":14,"s0":13,"s1":46,"s2":4,"s3":2,"s4":3,"s5":14},{"name_he":"אפרת רייטן מרום","name_en":"Efrat Rayten-Marom","gender":"Female","gender_he":"אישה","faction_he":"העבודה","faction_en":"Labor","les":133,"bills_submitted":130,"bills_passed":9,"s0":45,"s1":71,"s2":1,"s3":1,"s4":3,"s5":9},{"name_he":"רם בן ברק","name_en":"Ram Ben-Barak","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":122,"bills_submitted":125,"bills_passed":7,"s0":36,"s1":78,"s2":3,"s3":1,"s4":0,"s5":7},{"name_he":"מיכל שיר סגמן","name_en":"Michal Shir Segman","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":121,"bills_submitted":134,"bills_passed":4,"s0":36,"s1":88,"s2":5,"s3":1,"s4":0,"s5":4},{"name_he":"אברהם בצלאל","name_en":"Avraham Bezalel","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":109,"bills_submitted":85,"bills_passed":21,"s0":63,"s1":0,"s2":0,"s3":0,"s4":1,"s5":21},{"name_he":"קארין אלהרר","name_en":"Karine Elharrar","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":105,"bills_submitted":96,"bills_passed":6,"s0":28,"s1":56,"s2":2,"s3":1,"s4":3,"s5":6},{"name_he":"יואב סגלוביץ'","name_en":"Yoav Segalovitz","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":97,"bills_submitted":118,"bills_passed":5,"s0":46,"s1":65,"s2":0,"s3":1,"s4":1,"s5":5},{"name_he":"ארז מלול","name_en":"Erez Malul","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":96,"bills_submitted":88,"bills_passed":18,"s0":67,"s1":2,"s2":0,"s3":0,"s4":1,"s5":18},{"name_he":"אורית פרקש הכהן","name_en":"Orit Farkash-Hacohen","gender":"Female","gender_he":"אישה","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":95,"bills_submitted":80,"bills_passed":3,"s0":15,"s1":44,"s2":18,"s3":0,"s4":0,"s5":3},{"name_he":"יצחק פינדרוס","name_en":"Yitzhak Pindrus","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":94,"bills_submitted":46,"bills_passed":16,"s0":19,"s1":10,"s2":0,"s3":0,"s4":1,"s5":16},{"name_he":"אלעזר שטרן","name_en":"Elazar Stern","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":88,"bills_submitted":85,"bills_passed":6,"s0":24,"s1":53,"s2":1,"s3":1,"s4":0,"s5":6},{"name_he":"מיקי לוי","name_en":"Mickey Levy","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":80,"bills_submitted":82,"bills_passed":7,"s0":30,"s1":45,"s2":0,"s3":0,"s4":0,"s5":7},{"name_he":"איתן גינזבורג","name_en":"Eitan Ginzburg","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":76,"bills_submitted":71,"bills_passed":1,"s0":7,"s1":59,"s2":2,"s3":0,"s4":2,"s5":1},{"name_he":"גלית דיסטל אטבריאן","name_en":"Galit Distel-Atbaryan","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":75,"bills_submitted":55,"bills_passed":7,"s0":15,"s1":27,"s2":5,"s3":1,"s4":0,"s5":7},{"name_he":"ירון לוי","name_en":"Yaron Levi","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":68,"bills_submitted":67,"bills_passed":4,"s0":20,"s1":40,"s2":1,"s3":2,"s4":0,"s5":4},{"name_he":"יולי יואל אדלשטיין","name_en":"Yuli Yoel Edelstein","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":65,"bills_submitted":27,"bills_passed":8,"s0":4,"s1":10,"s2":2,"s3":1,"s4":2,"s5":8},{"name_he":"יאיר לפיד","name_en":"Yair Lapid","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":63,"bills_submitted":82,"bills_passed":2,"s0":30,"s1":48,"s2":1,"s3":1,"s4":0,"s5":2},{"name_he":"ישראל אייכלר","name_en":"Israel Eichler","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":62,"bills_submitted":34,"bills_passed":11,"s0":21,"s1":0,"s2":0,"s3":1,"s4":1,"s5":11},{"name_he":"צבי ידידיה סוכות","name_en":"Tzvi Yedidia Sukkot","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":62,"bills_submitted":65,"bills_passed":7,"s0":32,"s1":25,"s2":1,"s3":0,"s4":0,"s5":7},{"name_he":"אליהו ברוכי","name_en":"Eliyahu Baruchi","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":59,"bills_submitted":30,"bills_passed":11,"s0":18,"s1":0,"s2":0,"s3":0,"s4":1,"s5":11},{"name_he":"משה רוט","name_en":"Moshe Roth","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":49,"bills_submitted":32,"bills_passed":9,"s0":22,"s1":0,"s2":0,"s3":0,"s4":1,"s5":9},{"name_he":"מאיר פרוש","name_en":"Meir Porush","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":47,"bills_submitted":45,"bills_passed":0,"s0":0,"s1":43,"s2":2,"s3":0,"s4":0,"s5":0},{"name_he":"שרן מרים השכל","name_en":"Sharren Haskel","gender":"Female","gender_he":"אישה","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":45,"bills_submitted":22,"bills_passed":9,"s0":13,"s1":0,"s2":0,"s3":0,"s4":0,"s5":9},{"name_he":"זאב אלקין","name_en":"Zeev Elkin","gender":"Male","gender_he":"גבר","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":45,"bills_submitted":16,"bills_passed":9,"s0":7,"s1":0,"s2":0,"s3":0,"s4":0,"s5":9},{"name_he":"חילי טרופר","name_en":"Hili Tropper","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":45,"bills_submitted":37,"bills_passed":4,"s0":10,"s1":21,"s2":2,"s3":0,"s4":0,"s5":4},{"name_he":"סימון מושיאשוילי","name_en":"Simon Moshiashvili","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":44,"bills_submitted":13,"bills_passed":8,"s0":4,"s1":0,"s2":0,"s3":0,"s4":1,"s5":8},{"name_he":"אלמוג כהן","name_en":"Almog Cohen","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":40,"bills_submitted":43,"bills_passed":8,"s0":35,"s1":0,"s2":0,"s3":0,"s4":0,"s5":8},{"name_he":"מתן כהנא","name_en":"Matan Kahana","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":35,"bills_submitted":24,"bills_passed":7,"s0":17,"s1":0,"s2":0,"s3":0,"s4":0,"s5":7},{"name_he":"בועז טופורובסקי","name_en":"Boaz Toporovsky","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":33,"bills_submitted":52,"bills_passed":6,"s0":45,"s1":0,"s2":0,"s3":1,"s4":0,"s5":6},{"name_he":"עפיף עבד","name_en":"Afif Abed","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":31,"bills_submitted":23,"bills_passed":2,"s0":0,"s1":21,"s2":0,"s3":0,"s4":0,"s5":2},{"name_he":"עידן רול","name_en":"Idan Roll","gender":"Male","gender_he":"גבר","faction_he":"עצמאי","faction_en":"Independent","les":30,"bills_submitted":89,"bills_passed":6,"s0":83,"s1":0,"s2":0,"s3":0,"s4":0,"s5":6},{"name_he":"דני דנון","name_en":"Danny Danon","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":29,"bills_submitted":14,"bills_passed":5,"s0":8,"s1":0,"s2":0,"s3":0,"s4":1,"s5":5},{"name_he":"אבי מעוז","name_en":"Avi Maoz","gender":"Male","gender_he":"גבר","faction_he":"נעם","faction_en":"Noam","les":28,"bills_submitted":25,"bills_passed":1,"s0":3,"s1":19,"s2":2,"s3":0,"s4":0,"s5":1},{"name_he":"יוסף עטאונה","name_en":"Yousef Atauna","gender":"Male","gender_he":"גבר","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":25,"bills_submitted":83,"bills_passed":5,"s0":78,"s1":0,"s2":0,"s3":0,"s4":0,"s5":5},{"name_he":"יעל רון בן משה","name_en":"Yael Ron Ben-Moshe","gender":"Female","gender_he":"אישה","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":20,"bills_submitted":23,"bills_passed":0,"s0":5,"s1":16,"s2":2,"s3":0,"s4":0,"s5":0},{"name_he":"אוריאל בוסו","name_en":"Uriel Busso","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":20,"bills_submitted":28,"bills_passed":2,"s0":19,"s1":6,"s2":0,"s3":0,"s4":1,"s5":2},{"name_he":"משה אבוטבול","name_en":"Moshe Abutbul","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":15,"bills_submitted":17,"bills_passed":1,"s0":6,"s1":10,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"עדי עזוז","name_en":"Adi Azuz","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":13,"bills_submitted":16,"bills_passed":0,"s0":4,"s1":11,"s2":1,"s3":0,"s4":0,"s5":0},{"name_he":"בנימין גנץ","name_en":"Benny Gantz","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":13,"bills_submitted":20,"bills_passed":0,"s0":8,"s1":11,"s2":1,"s3":0,"s4":0,"s5":0},{"name_he":"סמיר בן סעיד","name_en":"Samir Ben-Said","gender":"Male","gender_he":"גבר","faction_he":"חד\"ש-תע\"ל","faction_en":"Hadash-Taal","les":12,"bills_submitted":13,"bills_passed":0,"s0":1,"s1":12,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אריה מכלוף דרעי","name_en":"Aryeh Deri","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":11,"bills_submitted":5,"bills_passed":1,"s0":1,"s1":2,"s2":0,"s3":0,"s4":1,"s5":1},{"name_he":"יעקב מרגי","name_en":"Yaakov Margi","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":11,"bills_submitted":9,"bills_passed":0,"s0":0,"s1":8,"s2":0,"s3":1,"s4":0,"s5":0},{"name_he":"אורנה ברביבאי","name_en":"Orna Barbivai","gender":"Female","gender_he":"אישה","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":10,"bills_submitted":10,"bills_passed":2,"s0":8,"s1":0,"s2":0,"s3":0,"s4":0,"s5":2},{"name_he":"אכרם חסון","name_en":"Akram Hasson","gender":"Male","gender_he":"גבר","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":9,"bills_submitted":9,"bills_passed":0,"s0":0,"s1":9,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אורי מקלב","name_en":"Uri Maklev","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":9,"bills_submitted":6,"bills_passed":0,"s0":0,"s1":5,"s2":0,"s3":0,"s4":1,"s5":0},{"name_he":"אמיר אוחנה","name_en":"Amir Ohana","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":6,"bills_submitted":2,"bills_passed":1,"s0":0,"s1":1,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"יעקב טסלר","name_en":"Yaakov Tessler","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":6,"bills_submitted":6,"bills_passed":0,"s0":0,"s1":6,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"מיכאל מלכיאלי","name_en":"Michael Malchieli","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":6,"bills_submitted":6,"bills_passed":0,"s0":0,"s1":6,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"משה ארבל","name_en":"Moshe Arbel","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":5,"bills_submitted":3,"bills_passed":1,"s0":2,"s1":0,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"גדי איזנקוט","name_en":"Gadi Eisenkot","gender":"Male","gender_he":"גבר","faction_he":"המחנה הממלכתי","faction_en":"National Unity","les":5,"bills_submitted":5,"bills_passed":1,"s0":4,"s1":0,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"יואב קיש","name_en":"Yoav Kisch","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":5,"bills_submitted":1,"bills_passed":1,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"איתמר בן גביר","name_en":"Itamar Ben-Gvir","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":5,"bills_submitted":2,"bills_passed":1,"s0":1,"s1":0,"s2":0,"s3":0,"s4":0,"s5":1},{"name_he":"דוד אמסלם","name_en":"David Amsalem","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":4,"bills_submitted":18,"bills_passed":0,"s0":17,"s1":0,"s2":0,"s3":0,"s4":1,"s5":0},{"name_he":"יואב בן צור","name_en":"Yoav Ben-Tzur","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":2,"bills_submitted":6,"bills_passed":0,"s0":4,"s1":2,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"עוז חיים","name_en":"Oz Haim","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":1,"bills_submitted":1,"bills_passed":0,"s0":0,"s1":1,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"חיים ביטון","name_en":"Haim Biton","gender":"Male","gender_he":"גבר","faction_he":"ש\"ס","faction_en":"Shas","les":1,"bills_submitted":1,"bills_passed":0,"s0":0,"s1":1,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יצחק גולדקנופ","name_en":"Yitzhak Goldknopf","gender":"Male","gender_he":"גבר","faction_he":"יהדות התורה","faction_en":"United Torah Judaism","les":1,"bills_submitted":1,"bills_passed":0,"s0":0,"s1":1,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"עידית סילמן","name_en":"Idit Silman","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"חיים כץ","name_en":"Haim Katz","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"בנימין נתניהו","name_en":"Benjamin Netanyahu","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"גילה גמליאל","name_en":"Gila Gamliel","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"גדעון סער","name_en":"Gideon Saar","gender":"Male","gender_he":"גבר","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":0,"bills_submitted":16,"bills_passed":0,"s0":16,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אבי דיכטר","name_en":"Avi Dichter","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אופיר אקוניס","name_en":"Ofir Akunis","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יריב לוין","name_en":"Yariv Levin","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"מירי מרים רגב","name_en":"Miri Regev","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יואל רזבוזוב","name_en":"Yoel Razvozov","gender":"Male","gender_he":"גבר","faction_he":"יש עתיד","faction_en":"Yesh Atid","les":0,"bills_submitted":1,"bills_passed":0,"s0":1,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אורית מלכה סטרוק","name_en":"Orit Strock","gender":"Female","gender_he":"אישה","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"עמיחי אליהו","name_en":"Amichai Eliyahu","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אופיר סופר","name_en":"Ofir Sofer","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יצחק שמעון וסרלאוף","name_en":"Yitzhak Shimon Wasserlauf","gender":"Male","gender_he":"גבר","faction_he":"עוצמה יהודית","faction_en":"Otzma Yehudit","les":0,"bills_submitted":2,"bills_passed":0,"s0":2,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"מאי גולן","name_en":"May Golan","gender":"Female","gender_he":"אישה","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":10,"bills_passed":0,"s0":10,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"עמיחי שיקלי","name_en":"Amichai Shikli","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"ניר ברקת","name_en":"Nir Barkat","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"ישראל כץ","name_en":"Israel Katz","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יפעת שאשא ביטון","name_en":"Yifat Shasha-Biton","gender":"Female","gender_he":"אישה","faction_he":"הימין הממלכתי","faction_en":"New Hope","les":0,"bills_submitted":1,"bills_passed":0,"s0":1,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"יואב גלנט","name_en":"Yoav Gallant","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"מכלוף מיקי זוהר","name_en":"Miki Zohar","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":22,"bills_passed":0,"s0":22,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"בצלאל סמוטריץ'","name_en":"Bezalel Smotrich","gender":"Male","gender_he":"גבר","faction_he":"הציונות הדתית","faction_en":"Religious Zionism","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"אלי כהן","name_en":"Eli Cohen","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":0,"bills_passed":0,"s0":0,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0},{"name_he":"שלמה קרעי","name_en":"Shlomo Karhi","gender":"Male","gender_he":"גבר","faction_he":"הליכוד","faction_en":"Likud","les":0,"bills_submitted":4,"bills_passed":0,"s0":4,"s1":0,"s2":0,"s3":0,"s4":0,"s5":0}];
+
+  // Sort by LES desc for ranking
+  allData.sort((a, b) => b.les - a.les);
+  allData.forEach((d, i) => d.rank = i + 1);
+
+  buildFactionFilter();
+  buildStats();
+  buildBubbleChart();
+  buildGenderChart();
+  buildHeatmap();
+  buildFactionChart();
+  loadFromUrl();
+  applyFilters();
+}
+
+function buildFactionFilter() {
+  const sel = document.getElementById('factionFilter');
+  const factions = [...new Set(allData.map(d => d.faction_he))].sort();
+  factions.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    sel.appendChild(opt);
+  });
+}
+
+function buildStats() {
+  const women = allData.filter(d => d.gender === 'Female');
+  const men = allData.filter(d => d.gender === 'Male');
+  const avg = v => Math.round(v.reduce((s, d) => s + d.les, 0) / v.length);
+
+  const stats = [
+    { num: allData.length, label: 'חברי כנסת' },
+    { num: women.length, label: 'נשים' },
+    { num: men.length, label: 'גברים' },
+  ];
+
+  document.getElementById('statsBar').innerHTML = stats.map(s =>
+    `<div class="stat"><div class="num">${s.num}</div><div class="label">${s.label}</div></div>`
+  ).join('');
+}
+
+function buildBubbleChart() {
+  const factions = [...new Set(allData.map(d => d.faction_he))];
+  const datasets = factions.map(f => {
+    const members = allData.filter(d => d.faction_he === f);
+    return {
+      label: f,
+      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(4, Math.sqrt(d.les) * 1.1), mk: d })),
+      backgroundColor: (FACTION_COLORS[f] || '#888') + 'bb',
+      borderColor: FACTION_COLORS[f] || '#888',
+      borderWidth: 1,
+    };
+  });
+
+  new Chart(document.getElementById('bubbleChart'), {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Segoe UI, Arial' }, boxWidth: 12 },
+          onClick(e, legendItem, legend) {
+            const faction = legendItem.text;
+            const sel = document.getElementById('factionFilter');
+            if (sel.value === faction) {
+              sel.value = '';
+            } else {
+              sel.value = faction;
+            }
+            applyFilters();
+            document.querySelector('.filters').scrollIntoView({ behavior: 'smooth' });
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw.mk;
+              return [`${d.name_he} (${d.faction_he})`, `LES: ${d.les}`, `הוגשו: ${d.bills_submitted} | עברו: ${d.bills_passed}`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'הצעות חוק שהוגשו' } },
+        y: { title: { display: true, text: 'הצעות חוק שעברו' } },
+      }
+    }
+  });
+}
+
+function buildGenderChart() {
+  const women = allData.filter(d => d.gender === 'Female');
+  const men   = allData.filter(d => d.gender === 'Male');
+
+  const rate = arr => {
+    const total = arr.reduce((s,d) => s + d.bills_submitted, 0);
+    const passed = arr.reduce((s,d) => s + d.bills_passed, 0);
+    return total > 0 ? parseFloat((passed / total * 100).toFixed(1)) : 0;
+  };
+
+  const metrics = [
+    { label: 'חציון LES',          f: median(women.map(d=>d.les)),            m: median(men.map(d=>d.les)) },
+    { label: 'חציון הצעות שהוגשו', f: median(women.map(d=>d.bills_submitted)), m: median(men.map(d=>d.bills_submitted)) },
+    { label: 'חציון הצעות שעברו',  f: median(women.map(d=>d.bills_passed)),    m: median(men.map(d=>d.bills_passed)) },
+    { label: '% הצלחה',            f: rate(women),                             m: rate(men) },
+  ];
+
+  new Chart(document.getElementById('genderChart'), {
+    type: 'bar',
+    data: {
+      labels: metrics.map(m => m.label),
+      datasets: [
+        {
+          label: `נשים (${women.length})`,
+          data: metrics.map(m => m.f),
+          backgroundColor: '#C0392Bcc',
+          borderColor: '#C0392B',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: `גברים (${men.length})`,
+          data: metrics.map(m => m.m),
+          backgroundColor: '#2980B9cc',
+          borderColor: '#2980B9',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Segoe UI, Arial' } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const unit = ctx.datasetIndex === 0 ? '' : '';
+              return `${ctx.dataset.label}: ${ctx.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Segoe UI, Arial' } } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function buildHeatmap() {
+  const STAGES = [
+    { key: 's0', label: 'נפל' },
+    { key: 's1', label: 'הוגש' },
+    { key: 's2', label: 'ק׳ ראשונה' },
+    { key: 's3', label: 'אושר בק׳ א׳' },
+    { key: 's4', label: 'לק׳ ב-ג׳' },
+    { key: 's5', label: 'עבר לחוק' },
+  ];
+
+  // Show only MKs with at least 1 bill, sorted by LES desc (top 60)
+  const active = allData.filter(d => d.bills_submitted > 0).slice(0, 60);
+
+  // Max value per stage column for color scaling
+  const maxPerStage = STAGES.map(st => Math.max(...active.map(d => d[st.key] || 0), 1));
+
+  // Color scale: white → stage-specific color
+  const STAGE_COLORS = [
+    [180, 60, 60],   // s0 red
+    [30, 80, 160],   // s1 blue
+    [0, 120, 120],   // s2 teal
+    [100, 60, 160],  // s3 purple
+    [180, 100, 0],   // s4 orange
+    [20, 140, 60],   // s5 green
+  ];
+
+  function cellColor(val, max, rgb) {
+    const t = max > 0 ? val / max : 0;
+    const r = Math.round(255 - t * (255 - rgb[0]));
+    const g = Math.round(255 - t * (255 - rgb[1]));
+    const b = Math.round(255 - t * (255 - rgb[2]));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function textColor(val, max) {
+    return (max > 0 && val / max > 0.4) ? 'white' : '#333';
+  }
+
+  let html = `<table class="heatmap-table">
+    <thead><tr>
+      <th>ח"כ</th>
+      ${STAGES.map(st => `<th style="text-align:center">${st.label}</th>`).join('')}
+    </tr></thead><tbody>`;
+
+  active.forEach(d => {
+    html += `<tr title="${d.name_he} — LES: ${d.les}">
+      <td class="mk-name">${d.name_he}</td>
+      ${STAGES.map((st, i) => {
+        const v = d[st.key] || 0;
+        const bg = cellColor(v, maxPerStage[i], STAGE_COLORS[i]);
+        const fg = textColor(v, maxPerStage[i]);
+        return `<td class="hm-cell" style="background:${bg};color:${fg}" title="${st.label}: ${v}">${v > 0 ? v : ''}</td>`;
+      }).join('')}
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('heatmapWrap').innerHTML = html;
+}
+
+function median(arr) {
+  const s = [...arr].sort((a,b) => a-b);
+  const m = Math.floor(s.length/2);
+  return s.length % 2 ? s[m] : Math.round((s[m-1]+s[m])/2);
+}
+
+function buildFactionChart() {
+  const factionNames = [...new Set(allData.map(d => d.faction_he))];
+  const factionStats = factionNames.map(f => {
+    const members = allData.filter(d => d.faction_he === f);
+    return { name: f, med: median(members.map(d => d.les)), count: members.length };
+  }).sort((a, b) => b.med - a.med);
+
+  factionChartInstance = new Chart(document.getElementById('factionChart'), {
+    type: 'bar',
+    data: {
+      labels: factionStats.map(f => `${f.name} (${f.count})`),
+      datasets: [{
+        label: 'חציון LES',
+        data: factionStats.map(f => f.med),
+        backgroundColor: factionStats.map(f => (FACTION_COLORS[f.name] || '#888') + 'cc'),
+        borderColor: factionStats.map(f => FACTION_COLORS[f.name] || '#888'),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `חציון LES: ${ctx.parsed.y}` } }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Segoe UI, Arial' } } },
+        y: { title: { display: true, text: 'חציון LES' }, beginAtZero: true }
+      },
+      onClick(e, elements) {
+        if (!elements.length) return;
+        const label = factionStats[elements[0].index].name;
+        const sel = document.getElementById('factionFilter');
+        if (sel.value === label) { sel.value = ''; } else { sel.value = label; }
+        applyFilters();
+        document.querySelector('.filters').scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  });
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const faction = document.getElementById('factionFilter').value;
+  const gender = document.getElementById('genderFilter').value;
+  const sort = document.getElementById('sortSelect').value;
+
+  filtered = allData.filter(d => {
+    if (search && !d.name_he.includes(search) && !d.name_en.toLowerCase().includes(search)) return false;
+    if (faction && d.faction_he !== faction) return false;
+    if (gender && d.gender !== gender) return false;
+    return true;
+  });
+
+  const rate = d => d.bills_submitted > 0 ? d.bills_passed / d.bills_submitted : 0;
+  if (sort === 'les-desc') filtered.sort((a,b) => b.les - a.les);
+  else if (sort === 'les-asc') filtered.sort((a,b) => a.les - b.les);
+  else if (sort === 'bills-desc') filtered.sort((a,b) => b.bills_submitted - a.bills_submitted);
+  else if (sort === 'rate-desc') filtered.sort((a,b) => rate(b) - rate(a));
+  else if (sort === 'name-asc') filtered.sort((a,b) => a.name_he.localeCompare(b.name_he, 'he'));
+
+  currentPage = 1;
+  document.getElementById('resultCount').textContent = `${filtered.length} חברי כנסת`;
+  renderTable();
+  renderPagination();
+}
+
+function renderTable() {
+  const maxLES = Math.max(...allData.map(d => d.les));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filtered.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('tableBody').innerHTML = page.map((d, i) => {
+    const rate = d.bills_submitted > 0 ? Math.round(d.bills_passed / d.bills_submitted * 100) : 0;
+    const isSelected = compareSet.includes(d.rank);
+    return `
+    <tr onclick="openModal(${d.rank - 1})">
+      <td style="color:#aaa; font-size:0.85rem">${start + i + 1}</td>
+      <td><strong>${d.name_he}</strong><br><span style="color:#aaa;font-size:0.8rem">${d.name_en}</span></td>
+      <td>${d.faction_he}</td>
+      <td><span class="${d.gender === 'Female' ? 'badge-f' : 'badge-m'}">${d.gender_he}</span></td>
+      <td>
+        <div class="les-bar-wrap">
+          <span class="les-num">${d.les}</span>
+          <div class="les-bar" style="width:${Math.round(d.les/maxLES*120)}px"></div>
+        </div>
+      </td>
+      <td>${d.bills_submitted}</td>
+      <td>${d.bills_passed}</td>
+      <td>
+        <div class="rate-bar-wrap">
+          <span>${rate}%</span>
+          <div class="rate-bar" style="width:${Math.round(rate * 0.6)}px"></div>
+        </div>
+      </td>
+      <td onclick="event.stopPropagation()">
+        <button class="compare-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompare(${d.rank})">${isSelected ? '✓ נבחר' : 'בחר'}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PAGE_SIZE);
+  if (total <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+
+  let html = `<button onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ הקודם</button>`;
+  for (let p = 1; p <= total; p++) {
+    if (p === 1 || p === total || Math.abs(p - currentPage) <= 1) {
+      html += `<button class="${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+    } else if (Math.abs(p - currentPage) === 2) {
+      html += `<span>…</span>`;
+    }
+  }
+  html += `<button onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>הבא ›</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  currentPage = p;
+  renderTable();
+  renderPagination();
+  document.querySelector('.table-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+function openModal(idx) {
+  const d = allData[idx];
+  const medAll = median(allData.map(x=>x.les));
+  const sameFaction = allData.filter(x => x.faction_he === d.faction_he);
+  const medFaction = median(sameFaction.map(x=>x.les));
+  const sameGender = allData.filter(x => x.gender === d.gender);
+  const medGender = median(sameGender.map(x=>x.les));
+
+  document.getElementById('mName').textContent = d.name_he;
+  document.getElementById('mNameEn').textContent = d.name_en;
+  document.getElementById('mFaction').textContent = d.faction_he;
+  document.getElementById('mLes').textContent = d.les;
+  document.getElementById('mPassed').textContent = d.bills_passed;
+  document.getElementById('mSubmitted').textContent = d.bills_submitted;
+  document.getElementById('mRank').textContent = d.rank;
+
+  document.getElementById('mCompare').innerHTML =
+    `חציון כנסת: <span>${medAll}</span> &nbsp;|&nbsp; חציון ${d.faction_he}: <span>${medFaction}</span> &nbsp;|&nbsp; חציון ${d.gender_he}ים: <span>${medGender}</span>`;
+
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalBg').classList.remove('open');
+}
+
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function toggleCompare(rank) {
+  const idx = compareSet.indexOf(rank);
+  if (idx > -1) {
+    compareSet.splice(idx, 1);
+  } else if (compareSet.length < 2) {
+    compareSet.push(rank);
+  } else {
+    compareSet = [compareSet[1], rank];
+  }
+  renderTable();
+  renderPagination();
+  renderCompare();
+}
+
+function clearCompare() {
+  compareSet = [];
+  renderTable();
+  renderPagination();
+  renderCompare();
+}
+
+function renderCompare() {
+  const hint = document.getElementById('compareHint');
+  const panel = document.getElementById('comparePanel');
+
+  if (compareSet.length === 0) {
+    hint.style.display = 'block';
+    panel.classList.remove('open');
+    hint.textContent = 'בחר שני חברי כנסת מהטבלה להשוואה ←';
+    return;
+  }
+  if (compareSet.length === 1) {
+    hint.style.display = 'block';
+    panel.classList.remove('open');
+    const mk = allData[compareSet[0] - 1];
+    hint.textContent = `נבחר: ${mk.name_he} — עכשיו בחר חבר/ת כנסת נוסף/ת`;
+    return;
+  }
+
+  hint.style.display = 'none';
+  panel.classList.add('open');
+  const mk1 = allData[compareSet[0] - 1];
+  const mk2 = allData[compareSet[1] - 1];
+
+  function mkHtml(a, b) {
+    const rate = a.bills_submitted > 0 ? (a.bills_passed / a.bills_submitted * 100).toFixed(1) : '0.0';
+    const rateB = b.bills_submitted > 0 ? (b.bills_passed / b.bills_submitted * 100).toFixed(1) : '0.0';
+    const rows = [
+      { label: 'ציון LES', valA: a.les, valB: b.les },
+      { label: 'דירוג', valA: a.rank, valB: b.rank, lower: true },
+      { label: 'הצעות שהוגשו', valA: a.bills_submitted, valB: b.bills_submitted },
+      { label: 'הצעות שעברו', valA: a.bills_passed, valB: b.bills_passed },
+      { label: '% הצלחה', valA: parseFloat(rate), valB: parseFloat(rateB), display: [rate + '%', rateB + '%'] },
+    ];
+    return `
+      <div class="cmk-name">${a.name_he}</div>
+      <div class="cmk-faction">${a.faction_he} | ${a.gender_he}</div>
+      ${rows.map(r => {
+        const better = r.lower ? (r.valA < r.valB) : (r.valA > r.valB);
+        const display = r.display ? r.display[0] : r.valA;
+        return `<div class="cmk-row"><span>${r.label}</span><span class="val ${better ? 'better' : ''}">${display}</span></div>`;
+      }).join('')}
+    `;
+  }
+
+  document.getElementById('cMk1').innerHTML = mkHtml(mk1, mk2);
+  document.getElementById('cMk2').innerHTML = mkHtml(mk2, mk1);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function shareLink(btn) {
+  const params = new URLSearchParams();
+  const s = document.getElementById('searchInput').value;
+  const f = document.getElementById('factionFilter').value;
+  const g = document.getElementById('genderFilter').value;
+  const sort = document.getElementById('sortSelect').value;
+  if (s) params.set('q', s);
+  if (f) params.set('faction', f);
+  if (g) params.set('gender', g);
+  if (sort !== 'les-desc') params.set('sort', sort);
+  const url = location.href.split('?')[0] + (params.toString() ? '?' + params.toString() : '');
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = '✓ הועתק!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '🔗 העתק קישור'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function shareChart(canvasId, name) {
+  const canvas = document.getElementById(canvasId);
+  const link = document.createElement('a');
+  link.download = `knesset25-${name}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function loadFromUrl() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('q')) document.getElementById('searchInput').value = params.get('q');
+  if (params.get('faction')) document.getElementById('factionFilter').value = params.get('faction');
+  if (params.get('gender')) document.getElementById('genderFilter').value = params.get('gender');
+  if (params.get('sort')) document.getElementById('sortSelect').value = params.get('sort');
+}
+
+['searchInput','factionFilter','genderFilter','sortSelect'].forEach(id => {
+  document.getElementById(id).addEventListener('input', applyFilters);
+});
+
+init();
+</script>
+</body>
+</html>
