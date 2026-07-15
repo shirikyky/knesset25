@@ -330,6 +330,30 @@
   .heatmap-table th { padding: 6px 10px; text-align: right; white-space: nowrap; color: #555; font-weight: 600; }
   .heatmap-table td.mk-name { padding: 3px 10px; white-space: nowrap; color: #333; font-size: 0.78rem; text-align: right; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
   .heatmap-table td.hm-cell { width: 60px; height: 26px; text-align: center; font-size: 0.72rem; font-weight: 600; color: white; border: 1px solid white; cursor: default; }
+
+  /* GENDER CHART TWO-PANEL */
+  .gender-charts { display: flex; gap: 16px; }
+  .gender-charts canvas { flex: 1; max-height: 280px; }
+
+  /* MOBILE */
+  @media (max-width: 640px) {
+    header { padding: 20px 4%; }
+    header h1 { font-size: 1.4rem; }
+    header p { font-size: 0.88rem; }
+    section { padding: 20px 4%; }
+    .stats-bar { justify-content: center; padding: 16px 4%; gap: 12px; }
+    .stat .num { font-size: 1.5rem; }
+    .share-bar { flex-direction: column; align-items: stretch; padding: 10px 4%; gap: 8px; }
+    .share-btn, .share-img-btn { text-align: center; justify-content: center; }
+    .filters { flex-direction: column; }
+    .filters input, .filters select { width: 100%; min-width: unset; }
+    h2 { font-size: 1.05rem; }
+    .chart-wrap canvas { max-height: 300px !important; }
+    .gender-charts { flex-direction: column; }
+    .gender-charts canvas { max-height: 240px !important; }
+    .compare-grid { flex-direction: column; }
+    .compare-vs { text-align: center; padding: 8px 0; }
+  }
 </style>
 </head>
 <body>
@@ -412,9 +436,12 @@
   </div>
 
   <h2>השוואת מגדר</h2>
-  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">חציון LES, הצעות שהוגשו ואחוז הצלחה בחלוקה לנשים וגברים.</p>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">השוואת חציון LES, הצעות חוק ואחוז הצלחה בין חברות כנסת לחברי כנסת.</p>
   <div class="chart-wrap">
-    <canvas id="genderChart" style="max-height:300px;"></canvas>
+    <div class="gender-charts">
+      <canvas id="genderChart1"></canvas>
+      <canvas id="genderChart2"></canvas>
+    </div>
   </div>
 
   <h2>מפת חום: שלבי חקיקה לפי ח"כ</h2>
@@ -424,7 +451,7 @@
   </div>
 
   <h2>חציון LES לפי סיעה</h2>
-  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">לחיצה על סיעה מסננת את הטבלה למטה. חציון עדיף על ממוצע כי הנתונים מוטים — ח"כים עם LES=0 מורידים את הממוצע.</p>
+  <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">חציון LES של חברי הכנסת בכל סיעה. לחיצה על סיעה מסננת את הטבלה.</p>
   <div class="chart-wrap">
     <canvas id="factionChart" style="max-height:340px;"></canvas>
   </div>
@@ -580,54 +607,46 @@ function buildGenderChart() {
     return total > 0 ? parseFloat((passed / total * 100).toFixed(1)) : 0;
   };
 
-  const metrics = [
-    { label: 'חציון LES',          f: median(women.map(d=>d.les)),            m: median(men.map(d=>d.les)) },
-    { label: 'חציון הצעות שהוגשו', f: median(women.map(d=>d.bills_submitted)), m: median(men.map(d=>d.bills_submitted)) },
-    { label: 'חציון הצעות שעברו',  f: median(women.map(d=>d.bills_passed)),    m: median(men.map(d=>d.bills_passed)) },
-    { label: '% הצלחה',            f: rate(women),                             m: rate(men) },
-  ];
+  const makeDatasets = (wVal, mVal) => ([
+    { label: `נשים (${women.length})`, data: wVal, backgroundColor: '#C0392Bcc', borderColor: '#C0392B', borderWidth: 1, borderRadius: 4 },
+    { label: `גברים (${men.length})`,  data: mVal, backgroundColor: '#2980B9cc', borderColor: '#2980B9', borderWidth: 1, borderRadius: 4 },
+  ]);
+  const chartOpts = (suffix) => ({
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'Segoe UI, Arial' } } },
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}${suffix}` } }
+    },
+    scales: {
+      x: { ticks: { font: { family: 'Segoe UI, Arial' } } },
+      y: { beginAtZero: true }
+    }
+  });
 
-  new Chart(document.getElementById('genderChart'), {
+  // גרף 1: LES + הצעות שהוגשו
+  new Chart(document.getElementById('genderChart1'), {
     type: 'bar',
     data: {
-      labels: metrics.map(m => m.label),
-      datasets: [
-        {
-          label: `נשים (${women.length})`,
-          data: metrics.map(m => m.f),
-          backgroundColor: '#C0392Bcc',
-          borderColor: '#C0392B',
-          borderWidth: 1,
-          borderRadius: 4,
-        },
-        {
-          label: `גברים (${men.length})`,
-          data: metrics.map(m => m.m),
-          backgroundColor: '#2980B9cc',
-          borderColor: '#2980B9',
-          borderWidth: 1,
-          borderRadius: 4,
-        },
-      ]
+      labels: ['חציון LES', 'חציון הצעות שהוגשו'],
+      datasets: makeDatasets(
+        [median(women.map(d=>d.les)), median(women.map(d=>d.bills_submitted))],
+        [median(men.map(d=>d.les)),   median(men.map(d=>d.bills_submitted))]
+      )
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'bottom', labels: { font: { family: 'Segoe UI, Arial' } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const unit = ctx.datasetIndex === 0 ? '' : '';
-              return `${ctx.dataset.label}: ${ctx.parsed.y}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: { ticks: { font: { family: 'Segoe UI, Arial' } } },
-        y: { beginAtZero: true }
-      }
-    }
+    options: chartOpts('')
+  });
+
+  // גרף 2: הצעות שעברו + % הצלחה
+  new Chart(document.getElementById('genderChart2'), {
+    type: 'bar',
+    data: {
+      labels: ['חציון הצעות שעברו', '% הצלחה'],
+      datasets: makeDatasets(
+        [median(women.map(d=>d.bills_passed)), rate(women)],
+        [median(men.map(d=>d.bills_passed)),   rate(men)]
+      )
+    },
+    options: chartOpts('')
   });
 }
 
