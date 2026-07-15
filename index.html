@@ -432,7 +432,7 @@
   <h2>הצעות חוק שהוגשו מול ציון LES</h2>
   <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">כל בועה היא ח"כ. גודל הבועה = LES. ציר X = הצעות חוק שהוגשו. ציר Y = הצעות חוק שעברו.</p>
   <div class="chart-wrap">
-    <canvas id="bubbleChart"></canvas>
+    <canvas id="bubbleChart" style="min-height:300px;"></canvas>
   </div>
 
   <h2>השוואת מגדר</h2>
@@ -453,7 +453,7 @@
   <h2>חציון LES לפי סיעה</h2>
   <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">חציון LES של חברי הכנסת בכל סיעה. לחיצה על סיעה מסננת את הטבלה.</p>
   <div class="chart-wrap">
-    <canvas id="factionChart" style="max-height:340px;"></canvas>
+    <canvas id="factionChart" style="min-height:420px;"></canvas>
   </div>
 </section>
 
@@ -552,7 +552,7 @@ function buildBubbleChart() {
     const members = allData.filter(d => d.faction_he === f);
     return {
       label: f,
-      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(4, Math.sqrt(d.les) * 1.1), mk: d })),
+      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(3, Math.sqrt(d.les) * (window.innerWidth < 640 ? 0.65 : 1.1)), mk: d })),
       backgroundColor: (FACTION_COLORS[f] || '#888') + 'bb',
       borderColor: FACTION_COLORS[f] || '#888',
       borderWidth: 1,
@@ -723,6 +723,7 @@ function buildFactionChart() {
     return { name: f, med: median(members.map(d => d.les)), count: members.length };
   }).sort((a, b) => b.med - a.med);
 
+  const isMobile = window.innerWidth < 640;
   factionChartInstance = new Chart(document.getElementById('factionChart'), {
     type: 'bar',
     data: {
@@ -737,14 +738,15 @@ function buildFactionChart() {
       }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `חציון LES: ${ctx.parsed.y}` } }
+        tooltip: { callbacks: { label: ctx => `חציון LES: ${ctx.parsed.x}` } }
       },
       scales: {
-        x: { ticks: { font: { family: 'Segoe UI, Arial' } } },
-        y: { title: { display: true, text: 'חציון LES' }, beginAtZero: true }
+        y: { ticks: { font: { family: 'Segoe UI, Arial', size: isMobile ? 11 : 12 } } },
+        x: { title: { display: true, text: 'חציון LES' }, beginAtZero: true }
       },
       onClick(e, elements) {
         if (!elements.length) return;
