@@ -586,24 +586,39 @@ function buildBubbleChart() {
     }
   });
 
-  // גרף דסקטופ — בועות
+  // גרף דסקטופ/מובייל — בועות
+  // במובייל: Y=LES (פיזור טוב), X=הצעות שהוגשו, גודל=הצעות שעברו
+  // בדסקטופ: Y=הצעות שעברו, X=הצעות שהוגשו, גודל=LES
+  const mobile = window.innerWidth < 640;
+  const bubbleCanvas = document.getElementById('bubbleChart');
+  if (mobile) {
+    bubbleCanvas.style.minWidth = '700px';
+    bubbleCanvas.style.minHeight = '420px';
+  }
+
   const factions = [...new Set(allData.map(d => d.faction_he))];
   const datasets = factions.map(f => {
     const members = allData.filter(d => d.faction_he === f);
     return {
       label: f,
-      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(3, Math.sqrt(d.les) * 1.1), mk: d })),
+      data: members.map(d => ({
+        x: d.bills_submitted,
+        y: mobile ? d.les : d.bills_passed,
+        r: mobile ? Math.max(3, Math.sqrt(d.bills_passed + 1) * 2.5) : Math.max(3, Math.sqrt(d.les) * 1.1),
+        mk: d
+      })),
       backgroundColor: (FACTION_COLORS[f] || '#888') + 'bb',
       borderColor: FACTION_COLORS[f] || '#888',
       borderWidth: 1,
     };
   });
 
-  new Chart(document.getElementById('bubbleChart'), {
+  new Chart(bubbleCanvas, {
     type: 'bubble',
     data: { datasets },
     options: {
       responsive: true,
+      maintainAspectRatio: !mobile,
       plugins: {
         legend: {
           position: 'bottom',
@@ -611,11 +626,7 @@ function buildBubbleChart() {
           onClick(e, legendItem, legend) {
             const faction = legendItem.text;
             const sel = document.getElementById('factionFilter');
-            if (sel.value === faction) {
-              sel.value = '';
-            } else {
-              sel.value = faction;
-            }
+            if (sel.value === faction) { sel.value = ''; } else { sel.value = faction; }
             applyFilters();
             document.querySelector('.filters').scrollIntoView({ behavior: 'smooth' });
           }
@@ -631,7 +642,7 @@ function buildBubbleChart() {
       },
       scales: {
         x: { title: { display: true, text: 'הצעות חוק שהוגשו' } },
-        y: { title: { display: true, text: 'הצעות חוק שעברו' } },
+        y: { title: { display: true, text: mobile ? 'LES' : 'הצעות חוק שעברו' }, beginAtZero: true },
       }
     }
   });
@@ -765,8 +776,8 @@ function buildFactionChart() {
 
   const isMobile = window.innerWidth < 640;
   const factionCanvas = document.getElementById('factionChart');
-  const rowHeight = window.innerWidth < 640 ? 38 : 28;
-  factionCanvas.style.height = (factionStats.length * rowHeight + 80) + 'px';
+  const rowHeight = window.innerWidth < 640 ? 48 : 28;
+  factionCanvas.style.height = (factionStats.length * rowHeight + 100) + 'px';
 
   factionChartInstance = new Chart(factionCanvas, {
     type: 'bar',
@@ -790,7 +801,7 @@ function buildFactionChart() {
         tooltip: { callbacks: { label: ctx => `חציון LES: ${ctx.parsed.x}` } }
       },
       scales: {
-        y: { ticks: { font: { family: 'Segoe UI, Arial', size: window.innerWidth < 640 ? 12 : 12 } } },
+        y: { ticks: { font: { family: 'Segoe UI, Arial', size: 12 }, autoSkip: false } },
         x: { title: { display: true, text: 'חציון LES' }, beginAtZero: true }
       },
       onClick(e, elements) {
