@@ -335,6 +335,13 @@
   .gender-charts { display: flex; flex-direction: column; gap: 24px; }
   .gender-charts canvas { max-height: 260px; }
 
+  /* BUBBLE CHART RESPONSIVE */
+  #bubbleMobileWrap { display: none !important; }
+  @media (max-width: 639px) {
+    #bubbleWrap { overflow-x: auto; }
+    #bubbleWrap canvas { min-width: 560px; }
+  }
+
   /* MOBILE */
   @media (max-width: 640px) {
     header { padding: 20px 4%; }
@@ -431,8 +438,12 @@
 
   <h2>הצעות חוק שהוגשו מול ציון LES</h2>
   <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">כל בועה היא ח"כ. גודל הבועה = LES. ציר X = הצעות חוק שהוגשו. ציר Y = הצעות חוק שעברו.</p>
-  <div class="chart-wrap">
+  <div class="chart-wrap" id="bubbleWrap">
     <canvas id="bubbleChart" style="min-height:300px;"></canvas>
+  </div>
+  <div class="chart-wrap" id="bubbleMobileWrap">
+    <p style="color:#888; font-size:0.8rem; margin-bottom:12px; text-align:center;">20 ח"כים עם ציון LES גבוה ביותר</p>
+    <canvas id="bubbleMobileChart"></canvas>
   </div>
 
   <h2>השוואת מגדר</h2>
@@ -453,7 +464,7 @@
   <h2>חציון LES לפי סיעה</h2>
   <p style="color:#666; font-size:0.88rem; margin-bottom:16px;">חציון LES של חברי הכנסת בכל סיעה. לחיצה על סיעה מסננת את הטבלה.</p>
   <div class="chart-wrap">
-    <canvas id="factionChart" style="min-height:420px;"></canvas>
+    <canvas id="factionChart"></canvas>
   </div>
 </section>
 
@@ -547,12 +558,41 @@ function buildStats() {
 }
 
 function buildBubbleChart() {
+  // גרף מובייל — top 20 עמודות אופקיות
+  const top20 = [...allData].sort((a,b) => b.les - a.les).slice(0, 20);
+  new Chart(document.getElementById('bubbleMobileChart'), {
+    type: 'bar',
+    data: {
+      labels: top20.map(d => d.name_he),
+      datasets: [{
+        label: 'ציון LES',
+        data: top20.map(d => d.les),
+        backgroundColor: top20.map(d => (FACTION_COLORS[d.faction_he] || '#888') + 'cc'),
+        borderColor: top20.map(d => FACTION_COLORS[d.faction_he] || '#888'),
+        borderWidth: 1, borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `LES: ${ctx.parsed.x} | ${top20[ctx.dataIndex].faction_he}` } }
+      },
+      scales: {
+        y: { ticks: { font: { size: 11, family: 'Segoe UI, Arial' } } },
+        x: { beginAtZero: true, title: { display: true, text: 'LES' } }
+      }
+    }
+  });
+
+  // גרף דסקטופ — בועות
   const factions = [...new Set(allData.map(d => d.faction_he))];
   const datasets = factions.map(f => {
     const members = allData.filter(d => d.faction_he === f);
     return {
       label: f,
-      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(3, Math.sqrt(d.les) * (window.innerWidth < 640 ? 0.65 : 1.1)), mk: d })),
+      data: members.map(d => ({ x: d.bills_submitted, y: d.bills_passed, r: Math.max(3, Math.sqrt(d.les) * 1.1), mk: d })),
       backgroundColor: (FACTION_COLORS[f] || '#888') + 'bb',
       borderColor: FACTION_COLORS[f] || '#888',
       borderWidth: 1,
@@ -724,7 +764,11 @@ function buildFactionChart() {
   }).sort((a, b) => b.med - a.med);
 
   const isMobile = window.innerWidth < 640;
-  factionChartInstance = new Chart(document.getElementById('factionChart'), {
+  const factionCanvas = document.getElementById('factionChart');
+  const rowHeight = window.innerWidth < 640 ? 38 : 28;
+  factionCanvas.style.height = (factionStats.length * rowHeight + 80) + 'px';
+
+  factionChartInstance = new Chart(factionCanvas, {
     type: 'bar',
     data: {
       labels: factionStats.map(f => `${f.name} (${f.count})`),
@@ -740,12 +784,13 @@ function buildFactionChart() {
     options: {
       indexAxis: 'y',
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => `חציון LES: ${ctx.parsed.x}` } }
       },
       scales: {
-        y: { ticks: { font: { family: 'Segoe UI, Arial', size: isMobile ? 11 : 12 } } },
+        y: { ticks: { font: { family: 'Segoe UI, Arial', size: window.innerWidth < 640 ? 12 : 12 } } },
         x: { title: { display: true, text: 'חציון LES' }, beginAtZero: true }
       },
       onClick(e, elements) {
