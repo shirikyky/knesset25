@@ -674,14 +674,16 @@ function buildGenderChart() {
     }
   });
 
+  const avg = arr => Math.round(arr.reduce((s,v) => s+v, 0) / arr.length);
+
   // גרף 1: LES + הצעות שהוגשו
   new Chart(document.getElementById('genderChart1'), {
     type: 'bar',
     data: {
-      labels: ['חציון LES', 'חציון הצעות שהוגשו'],
+      labels: ['ממוצע LES', 'ממוצע הצעות שהוגשו'],
       datasets: makeDatasets(
-        [median(women.map(d=>d.les)), median(women.map(d=>d.bills_submitted))],
-        [median(men.map(d=>d.les)),   median(men.map(d=>d.bills_submitted))]
+        [avg(women.map(d=>d.les)), avg(women.map(d=>d.bills_submitted))],
+        [avg(men.map(d=>d.les)),   avg(men.map(d=>d.bills_submitted))]
       )
     },
     options: chartOpts('')
@@ -691,15 +693,18 @@ function buildGenderChart() {
   new Chart(document.getElementById('genderChart2'), {
     type: 'bar',
     data: {
-      labels: ['חציון הצעות שעברו', '% הצלחה'],
+      labels: ['ממוצע הצעות שעברו', '% הצלחה'],
       datasets: makeDatasets(
-        [median(women.map(d=>d.bills_passed)), rate(women)],
-        [median(men.map(d=>d.bills_passed)),   rate(men)]
+        [avg(women.map(d=>d.bills_passed)), rate(women)],
+        [avg(men.map(d=>d.bills_passed)),   rate(men)]
       )
     },
     options: chartOpts('')
   });
 }
+
+let heatmapSortKey = 'les';
+let heatmapSortDir = -1;
 
 function buildHeatmap() {
   const STAGES = [
@@ -711,54 +716,56 @@ function buildHeatmap() {
     { key: 's5', label: 'עבר לחוק' },
   ];
 
-  // Show only MKs with at least 1 bill, sorted by LES desc (top 60)
-  const active = allData.filter(d => d.bills_submitted > 0).slice(0, 60);
-
-  // Max value per stage column for color scaling
-  const maxPerStage = STAGES.map(st => Math.max(...active.map(d => d[st.key] || 0), 1));
-
-  // Color scale: white → stage-specific color
   const STAGE_COLORS = [
-    [180, 60, 60],   // s0 red
-    [30, 80, 160],   // s1 blue
-    [0, 120, 120],   // s2 teal
-    [100, 60, 160],  // s3 purple
-    [180, 100, 0],   // s4 orange
-    [20, 140, 60],   // s5 green
+    [180, 60, 60],
+    [30, 80, 160],
+    [0, 120, 120],
+    [100, 60, 160],
+    [180, 100, 0],
+    [20, 140, 60],
   ];
 
   function cellColor(val, max, rgb) {
     const t = max > 0 ? val / max : 0;
-    const r = Math.round(255 - t * (255 - rgb[0]));
-    const g = Math.round(255 - t * (255 - rgb[1]));
-    const b = Math.round(255 - t * (255 - rgb[2]));
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${Math.round(255-t*(255-rgb[0]))},${Math.round(255-t*(255-rgb[1]))},${Math.round(255-t*(255-rgb[2]))})`;
+  }
+  function textColor(val, max) { return (max > 0 && val/max > 0.4) ? 'white' : '#333'; }
+
+  function renderHeatmap() {
+    const base = allData.filter(d => d.bills_submitted > 0).slice(0, 60);
+    const sorted = [...base].sort((a, b) => heatmapSortDir * ((a[heatmapSortKey]||0) - (b[heatmapSortKey]||0)));
+    const maxPerStage = STAGES.map(st => Math.max(...sorted.map(d => d[st.key]||0), 1));
+
+    const arrow = (key) => heatmapSortKey === key ? (heatmapSortDir === -1 ? ' ▼' : ' ▲') : '';
+
+    let html = `<table class="heatmap-table">
+      <thead><tr>
+        <th onclick="sortHeatmap('les')" style="cursor:pointer">ח"כ (LES${arrow('les')})</th>
+        ${STAGES.map(st => `<th style="text-align:center;cursor:pointer" onclick="sortHeatmap('${st.key}')">${st.label}${arrow(st.key)}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    sorted.forEach(d => {
+      html += `<tr title="${d.name_he} — LES: ${d.les}">
+        <td class="mk-name">${d.name_he}</td>
+        ${STAGES.map((st, i) => {
+          const v = d[st.key]||0;
+          const bg = cellColor(v, maxPerStage[i], STAGE_COLORS[i]);
+          const fg = textColor(v, maxPerStage[i]);
+          return `<td class="hm-cell" style="background:${bg};color:${fg}" title="${st.label}: ${v}">${v>0?v:''}</td>`;
+        }).join('')}
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('heatmapWrap').innerHTML = html;
   }
 
-  function textColor(val, max) {
-    return (max > 0 && val / max > 0.4) ? 'white' : '#333';
-  }
+  window.sortHeatmap = (key) => {
+    if (heatmapSortKey === key) { heatmapSortDir *= -1; } else { heatmapSortKey = key; heatmapSortDir = -1; }
+    renderHeatmap();
+  };
 
-  let html = `<table class="heatmap-table">
-    <thead><tr>
-      <th>ח"כ</th>
-      ${STAGES.map(st => `<th style="text-align:center">${st.label}</th>`).join('')}
-    </tr></thead><tbody>`;
-
-  active.forEach(d => {
-    html += `<tr title="${d.name_he} — LES: ${d.les}">
-      <td class="mk-name">${d.name_he}</td>
-      ${STAGES.map((st, i) => {
-        const v = d[st.key] || 0;
-        const bg = cellColor(v, maxPerStage[i], STAGE_COLORS[i]);
-        const fg = textColor(v, maxPerStage[i]);
-        return `<td class="hm-cell" style="background:${bg};color:${fg}" title="${st.label}: ${v}">${v > 0 ? v : ''}</td>`;
-      }).join('')}
-    </tr>`;
-  });
-
-  html += '</tbody></table>';
-  document.getElementById('heatmapWrap').innerHTML = html;
+  renderHeatmap();
 }
 
 function median(arr) {
@@ -771,7 +778,8 @@ function buildFactionChart() {
   const factionNames = [...new Set(allData.map(d => d.faction_he))];
   const factionStats = factionNames.map(f => {
     const members = allData.filter(d => d.faction_he === f);
-    return { name: f, med: median(members.map(d => d.les)), count: members.length };
+    const avg = arr => Math.round(arr.reduce((s,v) => s+v, 0) / arr.length);
+    return { name: f, med: avg(members.map(d => d.les)), count: members.length };
   }).sort((a, b) => b.med - a.med);
 
   const isMobile = window.innerWidth < 640;
